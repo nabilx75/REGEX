@@ -1,4 +1,4 @@
-# Python Regular Expressions (Regex) Cheat Sheet
+# Python Regular Expressions (Regex) Sheet
 
 Regular expressions (regex) are patterns used to search, match, and extract text.
 
