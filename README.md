@@ -1,4 +1,43 @@
-# Python Regular Expressions (Regex) Sheet
+# Python Regex Cheat Sheet
+
+A concise, example-driven cheat sheet for regular expressions in Python's `re` module. It covers the core syntax (character classes, quantifiers, groups, lookarounds), the main `re` functions, a worked date-matching case study, and the linguistic cases where regex breaks down.
+
+## Table of Contents
+
+1. [Character Classes](#1-character-classes)
+2. [Quantifiers](#2-quantifiers)
+3. [Common Special Sequences](#3-common-special-sequences)
+4. [Alternation](#4-alternation-)
+5. [Quick Summary](#5-quick-summary)
+6. [Matching Functions](#6-matching-functions)
+7. [Character Classes and Quantifiers Together](#7-character-classes-and-quantifiers-together)
+8. [The Dot and Escaping](#8-the-dot-and-escaping)
+9. [Optional Groups](#9-optional-groups)
+10. [Lookarounds](#10-lookarounds)
+11. [Case Study: Matching Dates](#11-case-study-matching-dates)
+12. [Capturing vs. Non-Capturing Groups (in Detail)](#12-capturing-vs-non-capturing-groups-in-detail)
+13. [Linguistic Phenomena That Make Regex Fragile](#13-linguistic-phenomena-that-make-regex-fragile)
+
+## Requirements
+
+- Python 3.x
+- No third-party packages: everything uses the standard-library `re` module (and `datetime` in the date example).
+
+## How to Use
+
+Every example is a standalone snippet. Copy it into a Python file or the interactive interpreter and run it:
+
+```bash
+python3
+>>> import re
+>>> re.findall(r"[cbr]at", "cat bat rat dog")
+['cat', 'bat', 'rat']
+```
+
+Tip: always write patterns as raw strings (`r"..."`) so Python does not interpret the backslashes.
+
+---
+
 
 Regular expressions (regex) are patterns used to search, match, and extract text.
 
@@ -147,3 +186,164 @@ Here, `(?:cat|dog)` means “match `cat` or `dog`, but do not capture that group
 - `\b` marks a word boundary.
 - `(cat|dog)` groups alternatives and captures the chosen alternative.
 - `(?:cat|dog)` groups alternatives without capturing them.
+
+## 6. Matching Functions
+
+| Function | What it does |
+|---|---|
+| `re.match()` | Checks the **beginning** of a string |
+| `re.fullmatch()` | Checks the **entire** string |
+| `re.search()` | Finds the **first** match anywhere in a string |
+| `re.findall()` | Returns **all** matches |
+
+## 7. Character Classes and Quantifiers Together
+
+`[cb]` means ONE character that is either `c` or `b`. So `[cb]at` matches `cat` and `bat` (but not `rat`, because `r` is not in the class).
+
+A class like `[a-z0-9_]` only says **which** characters are allowed for **one** position. To control **how many**, add a quantifier such as `{4,12}` (min 4, max 12). Without it, the pattern would match only a single character.
+
+```python
+# A username: 4 to 12 characters from a-z, 0-9 or _
+print(re.fullmatch(r"[a-z0-9_]{4,12}", "user_42"))
+```
+
+## 8. The Dot and Escaping
+
+In regex, the dot `.` has a special meaning: it matches almost any single character, not just a literal dot. A backslash (`\.`) makes it mean an actual decimal point.
+
+```python
+print(re.findall(r"3.14", "3.14 3x14 3-14"))
+print(re.findall(r"3\.14", "3.14 3x14 3-14"))
+```
+
+Output:
+
+```text
+['3.14', '3x14', '3-14']
+['3.14']
+```
+
+## 9. Optional Groups
+
+An optional group can appear zero or one time. For example, the decimal part of a number is optional:
+
+```python
+print(re.findall(r"\d+(?:\.\d+)?", "7 3.14 42"))
+```
+
+Output:
+
+```text
+['7', '3.14', '42']
+```
+
+## 10. Lookarounds
+
+### Negative lookbehind: `(?<!...)`
+
+Checks what comes **immediately before** the current position. The preceding text must **NOT** match the pattern inside.
+
+```python
+text = "cat bat rat"
+result = re.findall(r"(?<!b)at", text)
+print(result)
+```
+
+Output:
+
+```text
+['at', 'at']
+```
+
+`(?<!b)at` means: match `at`, but only if the character immediately before it is not `b`. This skips `bat` and matches the `at` in `cat` and `rat`.
+
+## 11. Case Study: Matching Dates
+
+A first pattern for `DD/MM/YYYY` or `DD-MM-YYYY`:
+
+```text
+\b\d{2}[/-]\d{2}[/-]\d{4}\b
+```
+
+### What breaks with `6/9/2026`, and how to adapt?
+
+`\d{2}` demands two digits, so `6/9/2026` is not matched. Use `\d{1,2}` for the day and month:
+
+```text
+\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b
+```
+
+### Why is it risky to validate a date only with a regex?
+
+A regex only checks the **shape** (digits and separators), not the **meaning**. `31/02/2026` has the right shape, but February never has 31 days. Even `99/99/9999` fits the shape. To check real dates, combine the regex with Python's `datetime`:
+
+```python
+from datetime import datetime
+
+def is_real_date(s):
+    try:
+        datetime.strptime(s, "%d/%m/%Y")
+        return True
+    except ValueError:
+        return False
+
+print(is_real_date("16/09/2026"), is_real_date("31/02/2026"))
+```
+
+Output:
+
+```text
+True False
+```
+
+## 12. Capturing vs. Non-Capturing Groups (in Detail)
+
+Both capturing and non-capturing groups contribute to the whole match (`group(0)`). But only **capturing** groups let you retrieve their individual text using `.group(n)`.
+
+```python
+m = re.search(r"(I like) (cats)", "I like cats")
+print(m.group(0))
+print(m.group(1))
+print(m.group(2))
+```
+
+Output:
+
+```text
+I like cats
+I like
+cats
+```
+
+- `group(0)` → the entire match.
+- `group(1)` → the text captured by the first pair of parentheses.
+- `group(2)` → the text captured by the second pair of parentheses.
+
+Now compare with a non-capturing group:
+
+```python
+m = re.search(r"(I like) (?:cats)", "I like cats")
+print(m.group(0))
+print(m.group(1))
+```
+
+Output:
+
+```text
+I like cats
+I like
+```
+
+Here `(?:cats)` is part of the match but is not numbered, so `m.group(2)` would raise an `IndexError`.
+
+## 13. Linguistic Phenomena That Make Regex Fragile
+
+1. **Contractions** (`don't`, `it's`, `l'école`): the apostrophe is part of a word, but also a quote mark.
+2. **Hyphenation and compounds** (`New-York`, `state-of-the-art`, `e-mail`): one unit or several words?
+3. **Acronyms and abbreviations** (`NLP`, `U.S.A.`, `Dr.`): the dot may end a sentence or just belong to the abbreviation.
+4. **Multi-word names** (`New York`, `Ben Ali`): two words but one entity.
+5. **Numbers, dates and prices** (`1,000.50` vs `1.000,50`, `16/09/2026`): many writing conventions depending on the country.
+6. **Languages without spaces** (Chinese, Japanese) or with different scripts (Arabic): `\b` and `[A-Z][a-z]` assume Latin letters separated by spaces. Accented letters (like `é`) are also missed by `[a-z]`.
+
+---
+
